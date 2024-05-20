@@ -1,18 +1,25 @@
-import { NextFunction, Request, Response } from "express";
-import createHttpError from "http-errors";
+import mongoose from "mongoose";
+import { User } from "./userTypes";
 
+const userSchema = new mongoose.Schema<User>({
+    name:{
+        type: String,
+        required: true
+    },
 
-const createUser= async (req: Request, res: Response, next: NextFunction)=>{
-    //validation
-    const {name, email, password} = req.body;
-    if(!name || !email || !password){
-        const error =  createHttpError(400, 'all fields are required');
-        return next(error);
-    }
+    email:{
+        type:String,
+        required: true,
+        unique: true
+    },
 
-    //process
-    //response
-    res.json({message: "user created succesfully"});
-}
+    password:{
+        type:String,
+        required: true
+    },
+},
+{timestamps: true}
+);
 
-export {createUser}
+// users name add by mongodb if you wanna change then pass in third parameter in string
+export default mongoose.model<User>('User', userSchema);
