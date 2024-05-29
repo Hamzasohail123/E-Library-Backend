@@ -7,6 +7,7 @@ import { config } from "../config/config";
 import { User } from "./userTypes";
 
 
+// Signup User
 const createUser= async (req: Request, res: Response, next: NextFunction)=>{
     //Validation
     const {name, email, password} = req.body;
@@ -31,9 +32,7 @@ const createUser= async (req: Request, res: Response, next: NextFunction)=>{
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Create user
-
-    let newUser : User
-
+    let newUser : User;
     try {
             newUser = await userModal.create({
             name,
@@ -46,15 +45,14 @@ const createUser= async (req: Request, res: Response, next: NextFunction)=>{
     }
 
   
-
+    // Token Generation
     try {
-            // Token Generation
         const token = sign({sub:newUser._id},config.jwtSecret as string,
             {expiresIn:'7d'});
         
             //process
             //response
-            res.json({accessToken: token});
+            res.status(201).json({accessToken: token});
         
     } catch (error) {
         return next(createHttpError(500, 'error while creating jst token'))        
@@ -63,4 +61,30 @@ const createUser= async (req: Request, res: Response, next: NextFunction)=>{
  
 }
 
-export {createUser}
+
+//Login User
+const loginUser = async (req:Request, res:Response, next:NextFunction)  =>{
+
+    // Validation
+    const {email, password} = req.body;
+    if(!email || !password){
+        return next(createHttpError(400, 'all fields are require'))
+    }
+    
+    // Checking user exist in database or not
+    const user = await userModal.findOne({email});
+    if(!user){
+        return next(createHttpError(400, 'user not found'))
+    }
+    const isMatch = await bcrypt.compare(password, user.password);
+    if(!isMatch){
+        return next(createHttpError(400, 'invalid credentials'))
+    }
+    // Token Generation
+    const token = sign({sub:user._id}, config.jwtSecret as string,
+        {expiresIn: '7d'});
+
+    res.json({accessToken:token});    
+}
+
+export {createUser, loginUser}
