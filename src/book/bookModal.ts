@@ -10,10 +10,10 @@ const bookSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     required: true
   },
-  description: {
-     type: String, 
-     required: true 
-    },
+  // description: {
+  //    type: String, 
+  //    required: true 
+  //   },
     coverImage:{
         type: String,
         required: true
