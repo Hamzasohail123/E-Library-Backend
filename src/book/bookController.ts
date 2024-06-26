@@ -166,9 +166,24 @@ const listBooks = async(req: Request, res: Response, next: NextFunction) =>{
     res.json(books);
     
   } catch (error) {
-    next(createHttpError(402, 'something went wrong while getting book'))
+    return next(createHttpError(500, 'something went wrong while getting book'))
   }
+};
+
+const getOneBook = async (req: Request, res: Response, next: NextFunction) =>{
+  const bookId = req.params.bookId;
+  try {
+    const book = await bookModal.findOne({_id: bookId})
+    if(!book){
+      return next(createHttpError(404, 'book not found'))
+    }
+    res.json(book);
+
+    
+  } catch (error) {
+    return next(createHttpError(500, 'error while getting book'))
+  }    
 }
 
 
-export { createBook, updateBook, listBooks };
+export { createBook, updateBook, listBooks, getOneBook };
