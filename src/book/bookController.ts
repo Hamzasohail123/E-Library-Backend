@@ -53,7 +53,7 @@ const createBook = async (req: Request, res: Response, next: NextFunction) => {
     bookFileUploadResult = await cloudinary.uploader.upload(bookFilePath, {
       resource_type: "raw",
       filename_override: bookFileName,
-      folder: "book-files",
+      folder: "book-pdfs",
       format: "pdf",
     });
     console.log("book file upload result", bookFileUploadResult);
@@ -113,7 +113,9 @@ const updateBook = async (req: Request, res: Response, next: NextFunction) => {
 
     const _req = req as Authrequest;
     if (book.author.toString() !== _req.userId) {
-      return next(createHttpError(403, "You don't have access to update others' books"));
+      return next(
+        createHttpError(403, "You don't have access to update others' books")
+      );
     }
 
     const files = req.files as { [filename: string]: Express.Multer.File[] };
@@ -121,7 +123,10 @@ const updateBook = async (req: Request, res: Response, next: NextFunction) => {
     let completeCoverImage = book.coverImage;
     if (files.coverImage) {
       const fileName = files.coverImage[0].filename;
-      const filePath = path.resolve(__dirname, "../../public/data/upload/" + fileName);
+      const filePath = path.resolve(
+        __dirname,
+        "../../public/data/upload/" + fileName
+      );
 
       const uploadResult = await cloudinary.uploader.upload(filePath, {
         filename_override: fileName,
@@ -135,7 +140,10 @@ const updateBook = async (req: Request, res: Response, next: NextFunction) => {
     let completeFileName = book.file;
     if (files.file) {
       const bookFileName = files.file[0].filename;
-      const bookFilePath = path.resolve(__dirname, "../../public/data/upload/" + bookFileName);
+      const bookFilePath = path.resolve(
+        __dirname,
+        "../../public/data/upload/" + bookFileName
+      );
 
       const uploadResultPdf = await cloudinary.uploader.upload(bookFilePath, {
         resource_type: "raw",
@@ -160,30 +168,75 @@ const updateBook = async (req: Request, res: Response, next: NextFunction) => {
   }
 };
 
-const listBooks = async(req: Request, res: Response, next: NextFunction) =>{
+// List Books
+const listBooks = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const books = await bookModal.find();
     res.json(books);
-    
   } catch (error) {
-    return next(createHttpError(500, 'something went wrong while getting book'))
+    return next(
+      createHttpError(500, "something went wrong while getting book")
+    );
   }
 };
 
-const getOneBook = async (req: Request, res: Response, next: NextFunction) =>{
+// Get One Book
+const getOneBook = async (req: Request, res: Response, next: NextFunction) => {
   const bookId = req.params.bookId;
   try {
-    const book = await bookModal.findOne({_id: bookId})
-    if(!book){
-      return next(createHttpError(404, 'book not found'))
+    const book = await bookModal.findOne({ _id: bookId });
+    if (!book) {
+      return next(createHttpError(404, "book not found"));
     }
     res.json(book);
-
-    
   } catch (error) {
-    return next(createHttpError(500, 'error while getting book'))
-  }    
-}
+    return next(createHttpError(500, "error while getting book"));
+  }
+};
+
+// Delete Book
+const deleteBook = async (req: Request, res: Response, next: NextFunction) => {
+  const bookId = req.params.bookId;
+
+  // Check book in modal
+  const book = await bookModal.findOne({ _id: bookId });
+  !book && next(createHttpError(404, "book not found"));
+
+  // Checkk access
+  const _req = req as Authrequest;
+  book?.author.toString() !== _req.userId &&
+    next(createHttpError(403, "you are not allowed to update others books"));
+
+  const coverFileSplits = book?.coverImage.split("/");
+  const coverImagePublicId =
+    coverFileSplits?.at(-2) + "/" + coverFileSplits?.at(-1)?.split(".").at(-2);
+  console.log("coverimagepublicId", coverImagePublicId);
+
+  const bookeFileSplits = book?.file.split("/");
+  const bookFilePublicId =
+    bookeFileSplits?.at(-2) + "/" + bookeFileSplits?.at(-1);
+  console.log("coverimagepublicId", bookeFileSplits);
+
+  try {
+    await cloudinary.uploader.destroy(coverImagePublicId);
+  } catch (error) {
+    console.error('Error deleting cover image:', error);
+    return next(createHttpError(404, 'Failed to delete cover image'));
+  }
+  
+  try {
+    await cloudinary.uploader.destroy(bookFilePublicId, {
+      resource_type: 'raw'
+    });
+  } catch (error) {
+    console.error('Error deleting book file:', error);
+    return next(createHttpError(404, 'Failed to delete book file'));
+  }
+
+  await bookModal.deleteOne({_id:bookId});
 
 
-export { createBook, updateBook, listBooks, getOneBook };
+  return res.sendStatus(204);
+};
+
+export { createBook, updateBook, listBooks, getOneBook, deleteBook };
